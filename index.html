@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOSHI — Staff Tool</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;min-height:100vh;color:#1a1a1a;}
+
+header{background:#1a1a1a;padding:16px 20px;display:flex;align-items:center;gap:12px;}
+header .logo{font-size:18px;font-weight:600;color:#fff;letter-spacing:0.08em;}
+header .subtitle{font-size:12px;color:#888;letter-spacing:0.04em;}
+
+.tab-bar{display:flex;background:#fff;border-bottom:1px solid #e8e6e0;}
+.tab{flex:1;padding:14px 8px;text-align:center;font-size:13px;font-weight:500;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;}
+.tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+
+.screen{display:none;padding:20px;max-width:480px;margin:0 auto;}
+.screen.active{display:block;}
+
+.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid #e8e6e0;}
+.card-title{font-size:13px;font-weight:600;color:#888;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:16px;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;color:#888;margin-bottom:5px;font-weight:500;}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid #e0deda;border-radius:8px;font-size:14px;background:#faf9f7;color:#1a1a1a;outline:none;transition:border 0.15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#1a1a1a;background:#fff;}
+.field textarea{resize:none;height:70px;}
+
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+.total-bar{background:#1a1a1a;color:#fff;border-radius:8px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.total-bar .label{font-size:12px;color:#aaa;}
+.total-bar .amount{font-size:22px;font-weight:600;letter-spacing:-0.02em;}
+
+.submit-btn{width:100%;padding:14px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 0.15s;}
+.submit-btn:hover{opacity:0.85;}
+.submit-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+/* Invoice section */
+.upload-zone{border:1.5px dashed #d0cec8;border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;background:#faf9f7;transition:background 0.15s;margin-bottom:16px;}
+.upload-zone:hover{background:#f0ede8;}
+.upload-zone svg{display:block;margin:0 auto 10px;}
+.upload-zone p{font-size:14px;color:#888;margin:0;}
+.upload-zone p strong{color:#1a1a1a;}
+
+.preview-img{width:100%;border-radius:8px;margin-bottom:14px;max-height:200px;object-fit:contain;background:#f0ede8;}
+
+.scan-btn{width:100%;padding:12px;background:#fff;color:#1a1a1a;border:1px solid #d0cec8;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:10px;transition:background 0.15s;}
+.scan-btn:hover{background:#f5f4f0;}
+.scan-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+.invoice-item{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #f0ede8;}
+.invoice-item:last-child{border-bottom:none;}
+.invoice-item .name{font-size:13px;}
+.invoice-item .qty{font-size:12px;color:#888;}
+.invoice-item .price{font-size:13px;font-weight:600;}
+
+.invoice-header{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding-bottom:8px;border-bottom:1px solid #e8e6e0;margin-bottom:4px;}
+.invoice-header span{font-size:11px;color:#aaa;font-weight:500;}
+
+.save-invoice-btn{width:100%;padding:13px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;margin-top:14px;}
+.save-invoice-btn:hover{opacity:0.85;}
+.save-invoice-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;transition:transform 0.3s;z-index:100;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{background:#c0392b;}
+
+/* Spinner */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:-2px;margin-right:6px;}
+.spinner.dark{border-color:rgba(0,0,0,0.15);border-top-color:#1a1a1a;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.reset-link{text-align:center;margin-top:10px;}
+.reset-link a{font-size:13px;color:#888;cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">HOSHI</div>
+    <div class="subtitle">Staff portal</div>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('wastage')">Log wastage</div>
+  <div class="tab" onclick="switchTab('invoice')">Scan invoice</div>
+</div>
+
+<!-- WASTAGE SCREEN -->
+<div class="screen active" id="screen-wastage">
+  <div style="height:16px;"></div>
+  <div class="card">
+    <div class="card-title">Wastage entry</div>
+    <div class="field">
+      <label>Item</label>
+      <input type="text" id="w-item" placeholder="e.g. Bluefin tuna" oninput="calcTotal()">
+    </div>
+    <div class="field">
+      <label>Wastage type</label>
+      <select id="w-from">
+        <option value="">Select type</option>
+        <option>Trimming</option>
+        <option>Spoilage</option>
+        <option>Complimentary</option>
+        <option>Marketing</option>
+        <option>Staff meal</option>
+      </select>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Weight (kg)</label>
+        <input type="number" id="w-weight" placeholder="0.000" step="0.001" min="0" oninput="calcTotal()">
+      </div>
+      <div class="field">
+        <label>Unit price ($/kg)</label>
+        <input type="number" id="w-price" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="w-date">
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="w-notes" placeholder="Any additional notes..."></textarea>
+    </div>
+  </div>
+
+  <div class="total-bar">
+    <span class="label">Total wastage cost</span>
+    <span class="amount" id="w-total">$0.00</span>
+  </div>
+
+  <button class="submit-btn" id="w-submit-btn" onclick="submitWastage()">Submit wastage</button>
+</div>
+
+<!-- INVOICE SCREEN -->
+<div class="screen" id="screen-invoice">
+  <div style="height:16px;"></div>
+
+  <div class="card" id="inv-upload-card">
+    <div class="card-title">Invoice photo</div>
+    <div class="upload-zone" onclick="document.getElementById('inv-file').click()" id="inv-drop-zone">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      <p><strong>Tap to upload invoice</strong></p>
+      <p style="margin-top:4px;font-size:12px;">Photo or file from your camera</p>
+    </div>
+    <input type="file" id="inv-file" accept="image/*" capture="environment" style="display:none" onchange="handleInvFile(this.files[0])">
+  </div>
+
+  <div class="card" id="inv-preview-card" style="display:none">
+    <div class="card-title">Preview</div>
+    <img id="inv-preview" class="preview-img" src="" alt="Invoice">
+    <div class="field">
+      <label>Invoice date</label>
+      <input type="date" id="inv-date">
+    </div>
+    <button class="scan-btn" id="inv-scan-btn" onclick="scanInvoice()">Scan invoice</button>
+    <div class="reset-link"><a onclick="resetInvoice()">Use a different photo</a></div>
+  </div>
+
+  <div class="card" id="inv-results-card" style="display:none">
+    <div class="card-title">Extracted items</div>
+    <div class="invoice-header">
+      <span>Item</span><span>Qty</span><span>$/kg</span>
+    </div>
+    <div id="inv-results-list"></div>
+    <button class="save-invoice-btn" id="inv-save-btn" onclick="saveInvoice()">Save to Invoice Log</button>
+    <div class="reset-link" style="margin-top:12px;"><a onclick="resetInvoice()">Scan another invoice</a></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSv5XVPRmQ3bR-C2upv8xvV7ZJ8UQmob8Am0y6ET4t5doJlcUsCHSg2lLYgEBtfRmhMA/exec';
+
+function today(){return new Date().toISOString().slice(0,10);}
+document.getElementById('w-date').value = today();
+document.getElementById('inv-date').value = today();
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active', (i===0&&tab==='wastage')||(i===1&&tab==='invoice')));
+  document.getElementById('screen-wastage').classList.toggle('active', tab==='wastage');
+  document.getElementById('screen-invoice').classList.toggle('active', tab==='invoice');
+}
+
+function calcTotal(){
+  const w = parseFloat(document.getElementById('w-weight').value)||0;
+  const p = parseFloat(document.getElementById('w-price').value)||0;
+  document.getElementById('w-total').textContent = '$'+(w*p).toFixed(2);
+}
+
+function showToast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast'+(isError?' error':'');
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+async function submitWastage(){
+  const item = document.getElementById('w-item').value.trim();
+  const from = document.getElementById('w-from').value;
+  const weight = parseFloat(document.getElementById('w-weight').value);
+  const price = parseFloat(document.getElementById('w-price').value);
+  const date = document.getElementById('w-date').value;
+  const notes = document.getElementById('w-notes').value.trim();
+
+  if(!item||!from||!weight||!price||!date){showToast('Please fill in all required fields.',true);return;}
+
+  const btn = document.getElementById('w-submit-btn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Submitting...';
+
+  try{
+    await fetch(SCRIPT_URL, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type:'wastage',
+        item, wastage_from:from,
+        date, weight,
+        unit_price:price,
+        total:parseFloat((weight*price).toFixed(2)),
+        notes
+      })
+    });
+    showToast('Wastage logged ✓');
+    document.getElementById('w-item').value='';
+    document.getElementById('w-from').value='';
+    document.getElementById('w-weight').value='';
+    document.getElementById('w-price').value='';
+    document.getElementById('w-notes').value='';
+    document.getElementById('w-date').value=today();
+    document.getElementById('w-total').textContent='$0.00';
+  }catch(e){
+    showToast('Failed to submit. Check your connection.',true);
+  }
+  btn.disabled=false;
+  btn.innerHTML='Submit wastage';
+}
+
+let invBase64='';
+let invItems=[];
+
+function handleInvFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    invBase64=e.target.result.split(',')[1];
+    document.getElementById('inv-preview').src=e.target.result;
+    document.getElementById('inv-upload-card').style.display='none';
+    document.getElementById('inv-preview-card').style.display='block';
+    document.getElementById('inv-results-card').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetInvoice(){
+  invBase64='';invItems=[];
+  document.getElementById('inv-file').value='';
+  document.getElementById('inv-upload-card').style.display='block';
+  document.getElementById('inv-preview-card').style.display='none';
+  document.getElementById('inv-results-card').style.display='none';
+}
+
+async function scanInvoice(){
+  if(!invBase64) return;
+  const btn=document.getElementById('inv-scan-btn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner dark"></span>Reading invoice...';
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:invBase64}},
+          {type:'text',text:'Extract all line items from this invoice. Return ONLY a JSON array, no markdown, no explanation. Each object: {"item":"short name max 5 words","qty":"e.g. 5.43 kg","unit_price":55.00}'}
+        ]}]
+      })
+    });
+    const data=await resp.json();
+    const text=data.content.map(i=>i.text||'').join('');
+    invItems=JSON.parse(text.replace(/```json|```/g,'').trim());
+    renderInvResults();
+  }catch(e){
+    showToast('Could not read invoice. Try a clearer photo.',true);
+    btn.disabled=false;
+    btn.innerHTML='Scan invoice';
+  }
+}
+
+function renderInvResults(){
+  document.getElementById('inv-preview-card').style.display='none';
+  document.getElementById('inv-results-card').style.display='block';
+  const list=document.getElementById('inv-results-list');
+  list.innerHTML=invItems.map(r=>`
+    <div class="invoice-item">
+      <span class="name">${r.item}</span>
+      <span class="qty">${r.qty}</span>
+      <span class="price">$${Number(r.unit_price).toFixed(2)}</span>
+    </div>`).join('');
+}
+
+async function saveInvoice(){
+  const date=document.getElementById('inv-date').value||today();
+  const btn=document.getElementById('inv-save-btn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Saving...';
+  try{
+    await fetch(SCRIPT_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'invoice',date,items:invItems.map(r=>({name:r.item,unit_price:r.unit_price}))})
+    });
+    showToast('Invoice saved to log ✓');
+    setTimeout(()=>resetInvoice(),1500);
+  }catch(e){
+    showToast('Failed to save. Check your connection.',true);
+  }
+  btn.disabled=false;
+  btn.innerHTML='Save to Invoice Log';
+}
+</script>
+</body>
+</html>
